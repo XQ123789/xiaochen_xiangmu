@@ -1,0 +1,1 @@
+在/boot/config.txt 中修改使hdmi_force_hotplug=1就可以了

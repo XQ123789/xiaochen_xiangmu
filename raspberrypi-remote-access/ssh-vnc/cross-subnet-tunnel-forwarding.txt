@@ -1,0 +1,4 @@
+SSH 端口转发：通过 ssh -L 建立加密隧道
+	如 ssh -L 5900:localhost:5900 raspi@树莓派跨网段IP，将远程 VNC 端口映射到本地，再用 VNC 客户端连接本地端口。
+
+在Windows终端执行 ssh -L 5902:localhost:5900 -N -f -l raspi 192.168.17.7，然后打开VNC viewer

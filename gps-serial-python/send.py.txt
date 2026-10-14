@@ -1,0 +1,25 @@
+import serial
+import time
+
+def send_to_stm32(port="/dev/ttyUSB0", baudrate=115200):
+    try:
+        ser = serial.Serial(port, baudrate=baudrate, timeout=1)
+        print(f"串口 {port} 已打开，波特率 {baudrate}")
+
+        while True:
+            message = "NAV,116.404,39.915"  # 示例数据
+            ser.write((message + "\n").encode())  # 发送数据 + 换行符
+            print(f"已发送: {message}")
+            time.sleep(3)  # 每3秒发送一次
+
+    except serial.SerialException as e:
+        print(f"串口错误: {e}")
+    except KeyboardInterrupt:
+        print("用户终止")
+    finally:
+        if 'ser' in locals() and ser.is_open:
+            ser.close()
+            print("串口已关闭")
+
+if __name__ == "__main__":
+    send_to_stm32()

@@ -1,0 +1,272 @@
+#include "4G.h"
+#include "string.h"
+#include "usart.h"
+#include "wdg.h"
+#include "led.h"
+
+char *strx;
+CSTX_4G CSTX_4G_Status;
+int  errcount=0;
+char ATSTR[BUFLEN];
+char IMEINUMBER[BUFLEN];
+
+#define PRODUCEKEY     "your_product_id"
+#define DEVICENAME     "your_device_name"
+#define DEVICESECRET   "version=2018-10-31&res=products%2Fyour_product_id%2Fdevices%2Fyour_device_name&et=0000000000&method=md5&sign=YOUR_SIGN_HERE&et=3778667000&method=md5&sign=oauR2oKMQ3H4tOuGauucjQ%3D%3D"
+
+void Clear_Buffer(void)
+{
+    printf("\r\nResponse: %s\r\n", buf_uart2.buf);
+    delay_ms(100);
+    buf_uart2.index = 0;
+    memset(buf_uart2.buf, 0, BUFLEN);
+    IWDG_Feed();
+}
+
+void CSTX_4G_Init(void)
+{
+    u8 retry_count = 0;
+    printf("\r\n start init EC200X\r\n");
+
+    // === 1. 检测模块通信 ===
+    Uart2_SendStr("ATE1\r\n");
+    delay_ms(300);
+    IWDG_Feed();
+    strx = strstr((char*)buf_uart2.buf, "OK");
+    while(strx == NULL)
+    {
+        IWDG_Feed();
+        printf("单片机正在连接模块...\r\n");
+        Clear_Buffer();
+        Uart2_SendStr("ATE1\r\n");
+        delay_ms(300);
+        strx = strstr((char*)buf_uart2.buf, "OK");
+    }
+    printf("****单片机和模块连接成功*****\r\n");
+    Clear_Buffer();
+
+    Uart2_SendStr("ATI\r\n");
+    delay_ms(500);
+    Clear_Buffer();
+
+    // === 2. 检测SIM卡 ===
+    Uart2_SendStr("AT+CIMI\r\n");
+    delay_ms(500);
+    IWDG_Feed();
+    strx = strstr((char*)buf_uart2.buf, "460");
+    while(strx == NULL)
+    {
+        IWDG_Feed();
+        Clear_Buffer();
+        Uart2_SendStr("AT+CIMI\r\n");
+        delay_ms(500);
+        strx = strstr((char*)buf_uart2.buf, "460");
+    }
+    printf("我的卡号：%s\r\n", buf_uart2.buf+8);
+    Clear_Buffer();
+
+    // === 3. 注网 ===
+    Uart2_SendStr("AT+CGATT?\r\n");
+    delay_ms(500);
+    IWDG_Feed();
+    strx = strstr((char*)buf_uart2.buf, "+CGATT: 1");
+    while(strx == NULL)
+    {
+        IWDG_Feed();
+        Clear_Buffer();
+        Uart2_SendStr("AT+CGATT?\r\n");
+        delay_ms(500);
+        strx = strstr((char*)buf_uart2.buf, "+CGATT: 1");
+    }
+    Clear_Buffer();
+
+    // === 4. 信号质量 ===
+    Uart2_SendStr("AT+CSQ\r\n");
+    delay_ms(300);
+    IWDG_Feed();
+    strx = strstr((char*)buf_uart2.buf, "+CSQ:");
+    if(strx)
+    {
+        printf("信号质量：%s 最大值31\r\n", buf_uart2.buf+14);
+        Clear_Buffer();
+    }
+
+    printf("正在打开GPS...\r\n");
+    Uart2_SendStr("AT+QGPS=1\r\n");
+    delay_ms(1000);
+    IWDG_Feed();
+    Clear_Buffer();
+
+    // 等待GPS就绪
+    do
+    {
+        IWDG_Feed();
+        delay_ms(1000);
+        Uart2_SendStr("AT+QGPS?\r\n");
+        delay_ms(300);
+        strx = strstr((char*)buf_uart2.buf, "+QGPS: 1");
+        if(strx)
+        {
+            printf("GPS已就绪\r\n");
+            break;
+        }
+        printf("等待GPS定位...\r\n");
+        Clear_Buffer();
+        retry_count++;
+    } while(retry_count < 10);
+
+    Clear_Buffer();
+    IWDG_Feed();
+}
+
+void CSTX_4G_RegALIYUNIOT(void)
+{
+    int timeout = 0;
+
+    Uart2_SendStr("AT+QMTDISC=0\r\n");
+    delay_ms(300);
+    Clear_Buffer();
+
+    Uart2_SendStr("AT+QMTCLOSE=0\r\n");
+    delay_ms(300);
+    Clear_Buffer();
+
+    // MQTT版本
+    Uart2_SendStr("AT+QMTCFG=\"version\",0,4\r\n");
+    delay_ms(500);
+    IWDG_Feed();
+    Clear_Buffer();
+
+    // 打开网络
+    printf("正在连接OneNET...\r\n");
+    Uart2_SendStr("AT+QMTOPEN=0,\"mqtts.heclouds.com\",1883\r\n");
+    timeout = 0;
+    while(!strstr((char*)buf_uart2.buf, "+QMTOPEN: 0,0") && timeout < 200)
+    {
+        IWDG_Feed();
+        delay_ms(50);
+        timeout++;
+    }
+    Clear_Buffer();
+
+    // 登录
+    memset(ATSTR,0,BUFLEN);
+    sprintf(ATSTR,"AT+QMTCONN=0,\"%s\",\"%s\",\"%s\"\r\n",DEVICENAME,PRODUCEKEY,DEVICESECRET);
+    printf("ATSTR = %s\r\n",ATSTR);
+    Uart2_SendStr(ATSTR);
+
+    timeout = 0;
+    while(!strstr((char*)buf_uart2.buf, "+QMTCONN: 0,0,0") && timeout < 200)
+    {
+        IWDG_Feed();
+        delay_ms(50);
+        timeout++;
+    }
+    Clear_Buffer();
+    printf("MQTT连接成功\r\n");
+}
+
+/*********************************************************************************
+** 函数名称 ： MakeOnenetPayload
+** 功能描述 ： 生成包含温湿度、GPS坐标及运动参数的JSON载荷
+** 输入参数 ： *Str - 输出缓冲区指针
+**           Temp - 温度值（0-255）
+**           Humi - 湿度值（0-255）
+**           Latitude - 纬度（double类型）
+**           Longitude - 经度（double类型）
+**           Altitude - 海拔高度（米，double类型）
+**			 Speed - 速度（米/秒，double类型）
+**           Direction - 运动方向角度（0-360°，double类型）
+** 返回值   ： JSON数据实际长度
+*********************************************************************************/
+u8 MakeOnenetPayload(u8 *Str, u8 Temp, u8 Humi, double Latitude, double Longitude, 
+                    double Altitude, double Speed, double Direction) 
+{
+    char JsonBuf[256];  // 扩大缓冲区以容纳所有字段
+    u16 JsonLen;
+    
+    // 生成包含温湿度、GPS及运动参数的JSON（OneNet物模型格式）
+    sprintf(JsonBuf, 
+            "{\"id\":\"123\",\"params\":{"
+            "\"temp\":{\"value\":%d},"
+            "\"humi\":{\"value\":%d},"
+            "\"latitude\":{\"value\":%.6f},"
+            "\"longitude\":{\"value\":%.6f},"
+            "\"altitude\":{\"value\":%.2f},"
+            "\"speed\":{\"value\":%.2f},"
+			"\"direction\":{\"value\":%.1f}"
+            
+            "}}", 
+            Temp, Humi, Latitude, Longitude, Altitude, Speed, Direction);
+    
+    JsonLen = strlen(JsonBuf);
+    memcpy(Str, JsonBuf, JsonLen);
+    return JsonLen;
+}
+
+/*********************************************************************************
+** 函数名称 ： CSTX_4G_ALYIOTSenddata
+** 功能描述 ： 发送温湿度、GPS数据及运动参数到OneNet平台
+** 输入参数 ： temp - 温度值
+**           humi - 湿度值
+**           latitude - 纬度
+**           longitude - 经度
+**           altitude - 海拔高度（米）
+**           direction - 运动方向角度（0-360°）
+**           speed - 速度（米/秒）
+** 关键流程 ： 1. 生成JSON载荷 → 2. MQTT发布 → 3. 验证结果
+*********************************************************************************/
+void CSTX_4G_ALYIOTSenddata(u8 temp, u8 humi, double latitude, double longitude, 
+                           double altitude, double speed, double direction) 
+{
+    u8 errcount = 0;
+    u8 SendBuf[256];
+    u8 JsonLen = MakeOnenetPayload(SendBuf, temp, humi, latitude, longitude, 
+                                  altitude, speed, direction);
+
+    //订阅主题
+    sprintf(ATSTR, "AT+QMTSUB=0,1,\"$sys/%s/%s/thing/property/set\",2\r\n", 
+            PRODUCEKEY, DEVICENAME);
+    Uart2_SendStr(ATSTR);
+    delay_ms(300);
+    Clear_Buffer();
+
+    //发布数据
+    sprintf(ATSTR, "AT+QMTPUBEX=0,0,0,0,\"$sys/%s/%s/thing/property/post\",%d\r\n", 
+            PRODUCEKEY, DEVICENAME, JsonLen);
+    Uart2_SendStr(ATSTR);
+    delay_ms(300);
+
+    // 3. 等待模块就绪
+    while (!strstr((char*)buf_uart2.buf, ">") && errcount++ < 100) {
+        delay_ms(10);
+    }
+    Clear_Buffer();
+
+    // 4. 发送JSON数据
+    USART2_Send((char*)SendBuf, JsonLen);
+    UART2_send_byte(0x1A);  // MQTT结束符
+    delay_ms(500);  // 延长等待确保发送完成
+
+    // 5. 验证发布结果
+    errcount = 0;
+    while (!strstr((char*)buf_uart2.buf, "+QMTPUBEX: 0,0,0") && errcount++ < 100) {
+        delay_ms(10);
+    }
+    printf("数据已发送: 温度=%d, 湿度=%d, 纬度=%.6f, 经度=%.6f, 海拔高度=%.2fm, 速度=%.2fm/s, 方向=%.1f°\r\n", 
+           temp, humi, latitude, longitude, altitude, speed, direction);
+    Clear_Buffer();
+}
+
+char* Get_4GIMEI_NUM(void)
+{
+    Clear_Buffer();
+    Uart2_SendStr("AT+CGSN=1\r\n");
+    delay_ms(300);
+    strx = strstr((char*)buf_uart2.buf, "+CGSN: \"");
+    if(strx)
+    {
+        strncpy(IMEINUMBER, strx+8, 15);
+    }
+    return IMEINUMBER;
+}

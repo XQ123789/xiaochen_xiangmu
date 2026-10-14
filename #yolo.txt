@@ -1,0 +1,177 @@
+#yolo
+import cv2
+import threading
+from flask import Flask, Response, render_template_string
+import time
+from ultralytics import YOLO
+
+# 初始化Flask应用
+app = Flask(__name__)
+
+# 全局变量
+latest_left_frame = None
+latest_right_frame = None
+frame_lock = threading.Lock()
+is_running = True
+
+# ====================== 配置（按需改）======================
+# 摄像头配置
+CAM_WIDTH = 640
+CAM_HEIGHT = 240
+CAM_FPS = 10
+CAM_DEVICE_ID = 0  # 摄像头设备号，黑屏改1
+
+# YOLO配置（轻量化）
+YOLO_MODEL = YOLO('yolov5n.pt')  # 自动下载7MB轻量模型
+YOLO_CONF = 0.3  # 置信度阈值（>30%才显示）
+YOLO_IMG_SIZE = 320  # 推理尺寸（越小越快）
+
+# ====================== 摄像头初始化 =======================
+def init_camera():
+    cap = cv2.VideoCapture(CAM_DEVICE_ID)
+    if not cap.isOpened():
+        raise Exception("摄像头打不开！改CAM_DEVICE_ID为1试试")
+    
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_HEIGHT)
+    cap.set(cv2.CAP_PROP_FPS, CAM_FPS)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+    
+    cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
+    cap.set(cv2.CAP_PROP_EXPOSURE, -6)
+    cap.set(cv2.CAP_PROP_AUTO_WB, 0)
+    cap.set(cv2.CAP_PROP_WB_TEMPERATURE, 4500)
+    return cap
+
+# ====================== 采集+识别线程 =======================
+def capture_frames():
+    global latest_left_frame, latest_right_frame
+    cap = None
+    try:
+        cap = init_camera()
+        # 清空初始缓存
+        for _ in range(2):
+            cap.read()
+        while is_running:
+            ret, frame = cap.read()
+            if not ret:
+                time.sleep(0.01)
+                continue
+            
+            # 分割双目画面
+            mid_width = frame.shape[1] // 2
+            left_frame = frame[:, :mid_width]
+            right_frame = frame[:, mid_width:]
+
+            # YOLO识别+绘制框
+            results_left = YOLO_MODEL(left_frame, imgsz=YOLO_IMG_SIZE, conf=YOLO_CONF)
+            left_with_box = results_left[0].plot()
+            results_right = YOLO_MODEL(right_frame, imgsz=YOLO_IMG_SIZE, conf=YOLO_CONF)
+            right_with_box = results_right[0].plot()
+
+            # 编码
+            _, left_encoded = cv2.imencode('.jpg', left_with_box, [cv2.IMWRITE_JPEG_QUALITY, 70])
+            _, right_encoded = cv2.imencode('.jpg', right_with_box, [cv2.IMWRITE_JPEG_QUALITY, 70])
+
+            # 更新帧
+            with frame_lock:
+                latest_left_frame = left_encoded.tobytes()
+                latest_right_frame = right_encoded.tobytes()
+            
+    except Exception as e:
+        print(f"线程出错：{e}")
+    finally:
+        if cap:
+            cap.release()
+
+# ====================== Flask推流 =======================
+def generate_video_feed(frame_source):
+    while is_running:
+        frame = None
+        with frame_lock:
+            frame = latest_left_frame if frame_source == "left" else latest_right_frame
+        
+        if frame:
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n'
+                   b'Cache-Control: no-cache\r\n\r\n' + frame + b'\r\n')
+        time.sleep(0.005)
+
+@app.route('/')
+def index():
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <title>双目摄像头+物体识别</title>
+        <meta http-equiv="Cache-Control" content="no-cache">
+        <style>
+            body {margin: 20px; font-family: Arial;}
+            .container {display: flex; gap: 20px; justify-content: center;}
+            .camera {background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px #ccc;}
+            h1 {text-align: center; color: #333;}
+            img {width: 320px; height: 240px; border-radius: 4px;}
+        </style>
+    </head>
+    <body>
+        <h1>双目摄像头+YOLO物体识别（低延迟版）</h1>
+        <div class="container">
+            <div class="camera">
+                <h3>左摄像头（带识别）</h3>
+                <img src="/video/left">
+            </div>
+            <div class="camera">
+                <h3>右摄像头（带识别）</h3>
+                <img src="/video/right">
+            </div>
+        </div>
+    </body>
+    </html>
+    ''')
+
+@app.route('/video/left')
+def video_left():
+    return Response(generate_video_feed("left"),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/video/right')
+def video_right():
+    return Response(generate_video_feed("right"),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+# ====================== 程序入口 ======================
+if __name__ == '__main__':
+    # 启动采集线程
+    capture_thread = threading.Thread(target=capture_frames, daemon=True)
+    capture_thread.start()
+    time.sleep(1)
+
+    # 获取树莓派IP（自动适配）
+    import socket
+    def get_local_ip():
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('8.8.8.8', 80))
+            ip = s.getsockname()[0]
+        except:
+            ip = '127.0.0.1'
+        finally:
+            s.close()
+        return ip
+    local_ip = get_local_ip()
+
+    # 启动服务
+    print("="*50)
+    print("部署成功！访问地址：")
+    print(f"http://{local_ip}:5000")
+    print("="*50)
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=False, 
+                threaded=True, use_reloader=False)
+    except KeyboardInterrupt:
+        print("\n程序中断，清理资源...")
+        is_running = False
+        capture_thread.join()
+        print("资源清理完成！")

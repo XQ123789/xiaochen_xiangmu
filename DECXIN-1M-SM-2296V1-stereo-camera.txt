@@ -1,0 +1,3 @@
+ls /dev/video*
+sudo apt install fswebcam -y
+fswebcam -r 640x480 --no-banner test.jpg

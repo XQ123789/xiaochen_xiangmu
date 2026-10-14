@@ -1,0 +1,3 @@
+获取natapp上的http隧道令牌your_authtoken（需要申请）
+然后在natapp同级目录下运行./natapp -authtoken=your_authtoken
+然后打开树莓派网页搜索esp8266所在的IPv4地址

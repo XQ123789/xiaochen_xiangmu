@@ -1,0 +1,2 @@
+ls /dev/ttyUSB*
+minicom -D /dev/ttyUSB* -b 115200

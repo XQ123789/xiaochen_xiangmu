@@ -1,0 +1,15 @@
+PA2	编码器	左编码器 A 相（EXTI2 中断）
+PA3	编码器	左编码器 B 相输入
+PA6	编码器	右编码器 A 相（EXTI9_5 中断）
+PA7	编码器	右编码器 B 相输入
+PA9	USART1	串口 1 发送（printf 调试）
+PA10	USART1	串口 1 接收
+PB0	TIM3_CH3	右电机 PWM 输出（TB6612 PWMB）
+PB5	GPIO 输出	右电机方向控制（TB6612 BIN1）
+PB6	TIM4_CH1	左电机 PWM 输出（TB6612 PWMA）
+PB7	GPIO 输出	左电机方向控制（TB6612 AIN1）
+PB8	GPIO 输出	左电机方向控制（TB6612 AIN2）
+PB9	GPIO 输出	右电机方向控制（TB6612 BIN2）
+PB10	USART3	串口 3 发送（与树莓派通信）
+PB11	USART3	串口 3 接收（与树莓派通信）
+PC13	GPIO 输出	LED 状态指示灯

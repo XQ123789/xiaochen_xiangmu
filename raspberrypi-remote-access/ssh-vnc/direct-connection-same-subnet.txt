@@ -1,0 +1,4 @@
+方法一：通过MobaXterm实现ssh访问，桌面版
+
+方法二：RealVNC 直接连接
+	需要在树莓派上开启VNC，在主机行安装VNC viewer 输入被控制机IP就可以实现远程控制

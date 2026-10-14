@@ -1,0 +1,195 @@
+一、通用命令
+ATI 显示产品标识信息
+AT+GMI索取制造商识别码
+AT+GMM请求TA模型识别
+AT+GMR请求软件版本的修订标识
+AT+CGMI索取制造商识别码
+AT+CGMM请求模型识别
+AT+CGMR请求版本的修订标识
+AT+GSN请求国际移动设备识别码（IMEI）
+AT+CGSN索取产品序列号识别码
+AT&F 将所有当前参数设置为制造商默认值
+AT&V 显示当前配置
+AT&W 将当前参数存储到用户定义的配置文件中
+ATZ 将所有当前参数设置为用户定义的配置文件
+ATQ 设置结果代码演示模式
+ATV TA响应格式
+ATE 设置命令回显模式
+A/ 重复上一个命令行
+ATS3 设置命令行终止字符
+ATS4 设置响应格式字符
+ATS5 设置命令行编辑字符
+ATX 设置连接结果代码格式和监控呼叫进度
+AT+CFUN 设置电话功能
+AT+CMEE 错误消息格式
+AT+CSCS 选择TE字符集
+AT+QURCCFG 配置URC指示选项
+
+二、 串行接口控制命令
+AT＆C 设置DCD功能模式
+AT＆D 设置DTR功能模式
+AT+IFC 设置TE-TA本地数据流控制
+AT+IPR 设置TE-TA固定本地费率
+
+三、 状态控制命令
+AT+CPAS 查询移动活动状态
+AT +CEER 报告扩展错误
+AT +QCFG 配置扩展设置
+AT +QCFG=“gprsattach” 配置GPRS附加模式
+AT+QCFG=“nwscanmode” 配置网络搜索模式
+AT+QCFG =“nwscanseq” 配置网络搜索顺序
+AT+QCFG =“roamservice” 配置漫游服务
+AT+QCFG =“servicedomain” 配置服务域
+AT+QCFG =“band” 配置Band
+AT+QCFG =“urc/ri/other” 指定在呈现其他URC时的RI行为
+AT+QCFG =“urcdelay” 设置URC指示的延迟时间
+AT+QCFG =“urc/cache” 启用/禁用URC缓存功能
+AT+QINDCFG 配置URC指示
+
+四、 SIM卡相关命令
+AT+CIMI 请求国际移动用户身份(IMSI）
+AT+CLCK 设备锁
+AT+CPIN 输入PIN
+AT+CPWD 更改密码
+AT+CSIM 通用(U)SIM卡访问权限
+AT+CRSM 受限(U)SIM卡访问权限
+AT+QCCID 显示ICCID
+AT+QPINC 显示PIN剩余计数器
+AT+QINISTAT 查询(U)SIM卡的初始化状态
+AT+QSIMDET (U)SIM卡检测
+AT+QSIMSTAT (U)SIM卡插入状态报告
+
+五、 网络服务命令
+AT+COPSO 运算符选择
+AT+CREG 网络注册状态
+AT+CSQ 信号质量报告
+AT+CPOL 首选运营商清单
+AT+COPN 读取操作员名称
+AT+CTZU 自动时区更新
+AT+CTZR 时区报告
+AT+QLTS 获得通过网络同步的最新时间
+AT+QNWINFO 查询网络信息
+
+六、 电话簿命令
+AT+CNUM 订户编号
+AT+CPBFF 查找电话簿条目
+AT+CPBR 阅读电话簿条目
+AT+CPBS 选择电话簿内存存储
+AT+CPBW 编写电话簿条目
+
+七、 短消息服务命令
+AT+CSMS 选择消息服务
+AT+CMGF 消息格式
+AT+CSCA 服务中心地址
+AT+CPMSP 首选消息存储
+AT+CMGD 删除消息
+AT+CMGL 列表消息
+AT+CMGR 阅读消息
+AT+CMGS 发送消息
+AT+CMMS 发送更多消息
+AT+CMGWW 将消息写入内存
+AT+CMSS 从存储发送消息
+AT+CNMA 对UE/TE的新消息确认
+AT+CNMISMS 事件报告配置
+AT+CSCB 选择小区广播消息类型
+AT+CSDH 显示SMS文本模式参数
+AT+CSMP 设置SMS文本模式参数
+AT+QCMGS 发送级联消息
+AT+QCMGR 读取连接的消息
+
+八、 数据包域命令
+AT+CGATT PS的附着或分离
+AT+CGDCONT 定义PDP上下文
+AT+CGQREQ 服务质量配置文件（已请求）
+AT+CGQMIN 服务质量配置文件（最低可接受）
+AT+CGEQREQ 3G服务质量配置文件（已请求）
+AT+CGEQMIN 3G服务质量配置文件（最低可接受）
+AT+CGACT 激活或停用PDP上下文
+AT+CGDATA 输入数据状态
+AT+CGPADDR 显示PDP地址
+AT+CGCLASS GPRS移动台类
+AT+CGREG 网络注册状态
+AT+CGEREP 包域事件报告
+AT+CGSMS 为MO SMS消息选择服务
+AT+CEREG EPS网络注册状态
+AT+QGDCNT 数据包数据计数器
+AT+QAUGDCNT 自动保存数据包数据计数器
+
+九、 硬件相关命令
+AT+QPOWD 关闭电源
+AT+CCLK 时钟
+AT+QSCLK 启用/禁用进入睡眠模式
+
+十、 缩写术语
+ADC 模数转换器 Analog-to-Digital Converter
+AMR 自适应多速率 Adaptive Multi-Rate
+bps 比特/秒 Bits Per Second
+CHAP 挑战握手认证协议 Challenge Handshake Authentication Protocol
+CS 编码方案 Coding Scheme
+CTS 清除发送 Clear to Send
+DL 下行链路 Downlink
+DMA 直接存储器访问 Direct Memory Access
+DTR 数据终端就绪 Data Terminal Ready
+EFR 增强型全速率 Enhanced Full Rate
+EGSM 增强型 GSM (Enhanced GSM)
+ESD 静电释放 Electrostatic Discharge
+ESR 等效串联电阻 Equivalent Series Resistance
+FDD 频分双工 Frequency Division Duplex
+FR 全速率Full Rate
+FTP 文件传输协议File Transfer Protocol
+FTPS 对常用的文件传输协议（FTP）添加传输层安全（TLS）和安全套接层（SSL）加密协议支持的扩展协议(FTP-over-SSL)
+GMSK 高斯滤波最小相移键控Gaussian Minimum Shift Keying
+GSM 全球移动通讯系统Global System for Mobile Communications
+HR 半速率Half Rate
+HSDPA 高速下行分组接入High-Speed Down Link Packet Access
+HSPA 高速分组接入 High-Speed Packet Access
+HSUPA 高速上行链路分组接入High-Speed Uplink Packet Access
+HTTP 超文本传输协议Hypertext Transfer Protocol
+HTTPS Layer超文本传输安全协议Hyper Text Transfer Protocol over Secure Socket
+LED 发光二极管Light Emitting Diode
+LTE 长期演进 Long Term Evolution
+ME 移动设备 Mobile Equipment
+MIMO 多输入多输出 Multiple Input Multiple Output
+MMS 彩信 Multimedia Messaging Service
+MQTT 消息队列遥测传输Message Queuing Telemetry Transport
+MSL 湿气敏感性等级Moisture Sensitivity Level
+NITZ 网络标识和时区 Network Identity and Time Zone
+NTP 网络时间协议Network Time Protocol
+PAP P密码认证协议assword Authentication Protocol
+PCB 印制电路板 Printed Circuit Board
+PDU 协议数据单元Protocol Data Unit
+PF 寻呼帧 Paging Frame
+PPP 点到点协议Point-to-Point Protocol
+PSK 相移键控Phase Shift Keying
+QAM 正交振幅调制Quadrature Amplitude Modulation
+QPSK 正交相移键控Quadrature Phase Shift Keying
+RF 射频Radio Frequency
+RGB 红，绿，蓝Red, Green, Blue
+SIMO 单入多出Single Input Multiple Output
+SM 智能媒体卡Smart Media
+SMS 短信Short Message Service
+SMTP 简单邮件传输协议 Simple Mail Transfer Protocol
+SMTPS 简单邮件传输协议的安全协议Simple Mail Transfer Protocol Secure
+SSL 安全套接层Secure Sockets Layer
+TCP 传输控制协议Transmission Control Protocol
+TDD 时分双工Time Division Duplexing
+UART 通用异步收发传输器Universal Asynchronous Receiver &Transmitter
+UDP用户数据报协议 User Datagram Protocol
+UL 上行链路Uplink
+UMTS 通用移动通信系统Universal Mobile Telecommunications System
+URC 非请求结果码Unsolicited Result Code
+(U)SIM （全球）用户识别卡(Universal) Subscriber Identity Module
+Vmax 电平最大值 Maximum Voltage Value
+Vnorm 电平典型值Normal Voltage Value
+Vmin 电平最小值Minimum Voltage Value
+VIHmax 输入高电平最大值Maximum Input High Level Voltage Value
+VIHmin 输入高电平最小值 Minimum Input High Level Voltage Value
+VILmax 输入低电平最大值 Maximum Input Low Level Voltage Value
+VILmin 输入低电平最小值Minimum Input Low Level Voltage Value
+VOHmax 输出高电平最大值 Maximum Output High Level Voltage Value
+VOHmin 输出高电平最小值Minimum Output High Level Voltage Value
+VOLmax 输出低电平最大值Maximum Output Low Level Voltage Value
+VOLmin 输出低电平最小值 Minimum Output Low Level Voltage Value
+VSWR 电压驻波比Voltage Standing Wave Ratio
+WCDMA 码分多址Wideband Code Division Multiple Access
+WLAN 无线局域网Wireless Local Area Network

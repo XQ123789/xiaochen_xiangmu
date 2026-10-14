@@ -1,0 +1,45 @@
+# Keil MDK 编译输出
+OUTPUT/
+*.o
+*.hex
+*.crf
+*.d
+*.axf
+*.lnp
+*.htm
+*.dep
+*.map
+*.lst
+
+# Keil 项目文件（用户级）
+*.uvoptx
+*.uvguix.*
+
+# JLink
+JLinkLog/
+JLinkSettings.ini
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# 敏感配置文件（包含密钥的文件）
+secrets.h
+config_local.json
+
+# 日志
+*.log

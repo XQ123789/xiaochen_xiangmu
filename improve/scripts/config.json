@@ -1,0 +1,17 @@
+{
+    "server": {
+        "host": "mqtts.heclouds.com",
+        "port": 1883,
+        "product_key": "your_product_key",
+        "device_name": "your_device_name",
+        "device_secret": "your_device_secret"
+    },
+    "serial": {
+        "port": "/dev/ttyUSB0",
+        "baudrate": 115200
+    },
+    "gps": {
+        "update_interval": 3,
+        "coordinate_system": "gcj02"
+    }
+}

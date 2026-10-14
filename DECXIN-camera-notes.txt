@@ -1,0 +1,163 @@
+import cv2
+import threading
+from flask import Flask, Response, render_template_string
+import time
+
+# 初始化Flask应用
+app = Flask(__name__)
+
+# 全局变量：存储最新的左右画面、线程锁、运行状态
+latest_left_frame = None
+latest_right_frame = None
+frame_lock = threading.Lock()
+is_running = True
+
+# ====================== 摄像头配置（兼容树莓派OpenCV）======================
+# 低延迟+兼容优先：分辨率640×240，帧率10（WiFi稳定）
+CAM_WIDTH = 640    # 整体宽度（双目拼接）
+CAM_HEIGHT = 240   # 整体高度
+CAM_FPS = 10       # 帧率
+CAM_DEVICE_ID = 0  # 摄像头设备号（0/1，按test_camera.py结果改）
+
+# 初始化摄像头（移除无效属性，保留核心低延迟优化）
+def init_camera():
+    # 不用CAP_V4L2，兼容树莓派默认驱动
+    cap = cv2.VideoCapture(CAM_DEVICE_ID)
+    if not cap.isOpened():
+        raise Exception("无法打开摄像头！请检查连接或设备号（改CAM_DEVICE_ID为1试试）")
+    
+    # 基础分辨率/帧率（摄像头支持的安全值）
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_HEIGHT)
+    cap.set(cv2.CAP_PROP_FPS, CAM_FPS)
+    
+    # 核心低延迟：最小缓存（保留！）
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+    
+    # 硬件编码（保留，减少CPU消耗）
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+    
+    # 曝光/白平衡优化（用树莓派支持的参数）
+    cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)  # 关闭自动曝光（兼容）
+    cap.set(cv2.CAP_PROP_EXPOSURE, -6)      # 固定曝光，减少噪点
+    cap.set(cv2.CAP_PROP_AUTO_WB, 0)        # 关闭自动白平衡（兼容）
+    cap.set(cv2.CAP_PROP_WB_TEMPERATURE, 4500)  # 固定白平衡
+    return cap
+
+# ====================== 视频采集线程（修复后）======================
+def capture_frames():
+    global latest_left_frame, latest_right_frame
+    cap = None
+    try:
+        cap = init_camera()
+        # 清空初始缓存（避免旧帧）
+        for _ in range(2):
+            cap.read()
+        while is_running:
+            # 读取摄像头画面（非阻塞）
+            ret, frame = cap.read()
+            if not ret:
+                time.sleep(0.01)
+                continue
+            
+            # 分割双目画面（核心功能保留）
+            height, width = frame.shape[:2]
+            mid_width = width // 2
+            left_frame = frame[:, :mid_width]
+            right_frame = frame[:, mid_width:]
+
+            # JPG编码（适度降质量，加快速度）
+            _, left_encoded = cv2.imencode('.jpg', left_frame, 
+                                          [cv2.IMWRITE_JPEG_QUALITY, 70])
+            _, right_encoded = cv2.imencode('.jpg', right_frame, 
+                                           [cv2.IMWRITE_JPEG_QUALITY, 70])
+
+            # 线程安全更新画面
+            with frame_lock:
+                latest_left_frame = left_encoded.tobytes()
+                latest_right_frame = right_encoded.tobytes()
+            
+            # 移除固定sleep，靠实际读取速度控帧率（低延迟核心）
+    except Exception as e:
+        print(f"采集线程出错：{e}")  # 只打印有效报错，不中断程序
+    finally:
+        if cap:
+            cap.release()
+
+# ====================== Flask视频流生成器（低延迟）======================
+def generate_video_feed(frame_source):
+    while is_running:
+        frame = None
+        with frame_lock:
+            frame = latest_left_frame if frame_source == "left" else latest_right_frame
+        
+        if frame:
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n'
+                   b'Cache-Control: no-cache\r\n\r\n' + frame + b'\r\n')
+        time.sleep(0.005)  # 极短等待，避免CPU占满
+
+# ====================== Flask路由（简化兼容）=====================
+@app.route('/')
+def index():
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <title>双目摄像头（低延迟）</title>
+        <meta http-equiv="Cache-Control" content="no-cache">
+        <style>
+            body {margin: 20px; font-family: Arial;}
+            .container {display: flex; gap: 20px; justify-content: center;}
+            .camera {background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px #ccc;}
+            h1 {text-align: center; color: #333;}
+            img {width: 320px; height: 240px; border-radius: 4px;}
+        </style>
+    </head>
+    <body>
+        <h1>双目摄像头实时画面（延迟优化版）</h1>
+        <div class="container">
+            <div class="camera">
+                <h3>左摄像头</h3>
+                <img src="/video/left">
+            </div>
+            <div class="camera">
+                <h3>右摄像头</h3>
+                <img src="/video/right">
+            </div>
+        </div>
+    </body>
+    </html>
+    ''')
+
+@app.route('/video/left')
+def video_left():
+    return Response(generate_video_feed("left"),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/video/right')
+def video_right():
+    return Response(generate_video_feed("right"),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+# ====================== 程序入口 ======================
+if __name__ == '__main__':
+    # 启动采集线程
+    capture_thread = threading.Thread(target=capture_frames, daemon=True)
+    capture_thread.start()
+    time.sleep(1)  # 短等待初始化
+
+    # 启动Flask服务（兼容树莓派）
+    print("="*50)
+    print("服务已启动！请在浏览器访问：")
+    print(f"http://192.168.57.7:5000")
+    print("="*50)
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=False, 
+                threaded=True, use_reloader=False)
+    except KeyboardInterrupt:
+        print("\n程序中断，清理资源...")
+        is_running = False
+        capture_thread.join()
+        print("资源清理完成！")

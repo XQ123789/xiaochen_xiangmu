@@ -1,0 +1,235 @@
+AT
+-> OK
+(测试基础AT指令通信是否正常)
+
+AT+CPIN?
+-> +CPIN: READY
+(测试SIM卡识别状态)
+
+AT+CSQ
+-> +CSQ: 24,99
+(测试信号强度，第一个值应大于10
+
+AT+QGPS=1
+-> OK
+(测试GPS启动命令)
+
+AT+QGPS?
+-> +QGPS: 1
+(确认GPS功能已启用)
+
+AT+QGPSLOC?
+-> 
++QGPSLOC: 080349.000,3377.3393N,11318.3543E,0.9,134.1,3,000.00,0.0,0.0,280625,13
+(测试首次定位能力)
+
+AT
+AT+CPIN?
+AT+CSQ
+AT+QGPS=1
+AT+QGPS?
+AT+QGPSLOC?
+
+AT+QMTCONN=0,"your_device_name","your_product_id","version=2018-10-31&res=products%2Fyour_product_id%2Fdevices%2Fyour_device_name&et=0000000000&method=md5&sign=YOUR_SIGN_HERE&et=1952600187&method=md5&sign=%2FzpebHmgh79jIbvyCRcDdw%3D%3D"
+
+AT+QMTSUB=0,1,"$sys/your_product_id/your_device_name/thing/property/set",2
+AT+QMTPUBEX=0,0,0,0,"$sys/your_product_id/your_device_name/thing/property/post",63
+{"id":"123","params":{"humi":{"value":56},"temp":{"value":23}}}
+
+{"id":"123","params":{"temp":{"value":2}}}
+{"id":"123","params":{"temp":{"value":23}}}
+
+33.773393,113.183543
+36.099597,113.829845
+
+
+AT+QMTCONN=0,"gps","nKwBhfob16","version=2018-10-31&res=products%2Fyour_product_id%2Fdevices%2Fyour_device_name&et=0000000000&method=md5&sign=YOUR_SIGN_HERE&et=1952600187&method=md5&sign=eKW%2FPdbqhSt3AcUXGHGbAg%3D%3D"
+
+AT+QMTSUB=0,1,"$sys/nKwBhfob16/gps/thing/property/set",2
+AT+QMTPUBEX=0,0,0,0,"$sys/nKwBhfob16/gps/thing/property/post",字符长度
+
+{"id":"123","params":{"longitude":{"value":},"latitude":{"value":}}}
+
+
+旧版封装
+/*********************************************************************************
+** 函数名称 ： MakeOnenetPayload(char *Str,u8 Temp,u8 Humi)
+** 函数功能 ： 将温度与湿度封装成Onenet有效载荷包
+** 输    入	： *str有效载荷保存的目标字符串, 
+** 输    入	： Temp 温度值
+** 输    入	： Humi 湿度值
+** 输    出	： 有效载荷字符串
+** 返    回	： 有效载荷字符串长度
+*********************************************************************************/
+u8 MakeOnenetPayload(u8 *Str,u8 Temp,u8 Humi)//将温度与湿度封装成Onenet有效载荷包
+{
+	char Payload[] = "{\"datastreams\":[{\"id\":\"Temp\",\"datapoints\":[{\"value\":%d}]},{\"id\":\"Humi\",\"datapoints\":[{\"value\":%d}]}]}";//onenet有效载荷固定格式
+	char JsonBuf[256];//临时数据缓存 
+	unsigned short   StrLen;//有效载荷数据长度
+	sprintf(JsonBuf,Payload,Temp,Humi);//合成数据有效载荷封装
+	//printf("\r\n有效载荷(%d):[%s]\r\n",strlen(JsonBuf),(char *)JsonBuf);
+	StrLen = strlen(JsonBuf)/sizeof(char);//计算有效载荷的数据长度
+	//printf("\r\n有效载荷长度(%d)\r\n",StrLen);
+	Str[0] = '\x01';//报文第一个字节的固定显示
+	//printf("\r\nStr[0]=0X(%02X)\r\n",Str[0]);
+	//报文第2个字节和第三个字节表示有效载荷的长度的固定显示
+	Str[1] = (StrLen & 0XFF00) >>8;//高位
+	//printf("\r\nStr[1]=0X(%02X)\r\n",Str[1]);
+	Str[2] =  StrLen & 0XFF;//低位
+	//printf("\r\nStr[2]=0X(%02X)\r\n",Str[2]);
+	//拷贝有效载荷数据到Str
+	memcpy(Str+3,JsonBuf,StrLen);//从第三个字节开始拷贝
+	return (StrLen+3);//返回长度
+}
+
+u8   Send_Json[BUFLEN];//AT命令临时缓存
+void CSTX_4G_ALYIOTSenddata(u8 temp,u8 humi)//上发数据，上发的数据跟对应的插件有关系，用户需要注意插件然后对应数据即可
+{
+	u8 JsonLen;//Json包数据长度
+	memset((char *)Send_Json, 0, BUFLEN);//开辟数据缓存   sprintf((char*)Json,"{\"Temp\":%d,\"Humi\":%d}",Temperature,Humidity);//拷贝数据 装订联网三要素  Temperature,Humidity
+    memset(ATSTR,0,BUFLEN);
+	Gui_DrawFont_GBK16(16,10,RED,WHITE, "SEND DATA...");
+	Clear_Buffer();
+    sprintf(ATSTR,"AT+QMTSUB=0,1,\"$sys/nKwBhfob16/gps/thing/property/set\",2\r\n");
+    printf("ATSTR = %s \r\n",ATSTR);
+    Uart2_SendStr(ATSTR);//mqtt提交
+    delay_ms(300);
+	strx=strstr((const char*)buf_uart2.buf,(const char*)">");//准备发送数据
+	errcount=0;
+    while(strx==NULL)
+    {
+        errcount++;
+        strx=strstr((const char*)buf_uart2.buf,(const char*)">");//准备发送数据 模块的反馈
+		delay_ms(30);
+        if(errcount>100)     //超时退出
+        {
+            errcount = 0;
+            break;
+        }
+    }
+	
+	JsonLen = MakeOnenetPayload(Send_Json,temp,humi);	//得到json
+	USART2_Send((char *)Send_Json,JsonLen);//发送json 数据
+	UART2_send_byte(0x1A);
+	delay_ms(300);
+	errcount=0;
+    strx=strstr((const char*)buf_uart2.buf,(const char*)"+QMTPUB: 0,0,0");//返SEND OK +QMTPUB: 0,0,0
+    while(strx==NULL)
+    {
+		errcount++;
+        strx=strstr((const char*)buf_uart2.buf,(const char*)"+QMTPUB: 0,0,0");//返SEND OK
+		delay_ms(30);
+        if(errcount>100)     //超时退出
+        {
+            errcount = 0;
+            break;
+        }
+    }
+    Clear_Buffer();
+	Gui_DrawFont_GBK16(16,10,RED,WHITE, "SEND DATA OK");
+}
+
+
+
+第二次修改
+/*********************************************************************************
+** 函数名称 ： MakeOnenetPayload(char *Str, u8 Temp, u8 Humi)
+** 函数功能 ： 将温度与湿度封装成OneNet MQTT协议要求的JSON格式
+** 输    入 ： *Str - 有效载荷保存的目标字符串
+**           Temp - 温度值
+**           Humi - 湿度值
+** 输    出 ： 有效载荷字符串
+** 返    回 ： 有效载荷字符串长度
+*********************************************************************************/
+u8 MakeOnenetPayload(u8 *Str, u8 Temp, u8 Humi) 
+{
+    // 新版OneNet MQTT协议要求的JSON格式
+    char Payload[] = "{\"id\":\"123\",\"params\":{\"humi\":{\"value\":%d},\"temp\":{\"value\":%d}}}";
+    char JsonBuf[256]; // 临时数据缓存
+    unsigned short StrLen; // 有效载荷数据长度
+
+    // 1. 合成JSON数据
+    sprintf(JsonBuf, Payload, Humi, Temp);
+    StrLen = strlen(JsonBuf); // 计算有效载荷长度（不含头部的3字节）
+
+    // 2. 构建MQTT报文头部（保持原框架不变）
+    Str[0] = '\x01'; // 固定报文头
+    Str[1] = (StrLen & 0xFF00) >> 8; // 长度高位
+    Str[2] = StrLen & 0xFF; // 长度低位
+
+    // 3. 拷贝JSON数据到输出缓冲区
+    memcpy(Str + 3, JsonBuf, StrLen);
+    
+    return (StrLen + 3); // 返回总长度（头部3字节 + JSON数据）
+}
+
+/*********************************************************************************
+** 函数名称 ： CSTX_4G_ALYIOTSenddata(u8 temp, u8 humi)
+** 函数功能 ： 通过MQTT协议发送温湿度数据到OneNet平台
+** 输    入 ： temp - 温度值
+**           humi - 湿度值
+*********************************************************************************/
+u8   Send_Json[BUFLEN];//AT命令临时缓存
+void CSTX_4G_ALYIOTSenddata(u8 temp, u8 humi) 
+{
+    u8 JsonLen;
+    memset(Send_Json, 0, BUFLEN);
+    
+    // 1. 订阅主题（如果需要）
+    Gui_DrawFont_GBK16(16,10,RED,WHITE, "SEND DATA...");
+    Clear_Buffer();
+    
+    // 设置订阅主题（格式：$sys/{产品ID}/{设备名}/thing/property/set）
+    sprintf(ATSTR, "AT+QMTSUB=0,1,\"$sys/%s/%s/thing/property/set\",2\r\n", PRODUCEKEY, DEVICENAME);
+    Uart2_SendStr(ATSTR);
+    delay_ms(300);
+    
+    // 等待订阅响应
+    strx = strstr((const char*)buf_uart2.buf, ">");
+    errcount = 0;
+    while(strx == NULL) {
+        errcount++;
+        strx = strstr((const char*)buf_uart2.buf, ">");
+        delay_ms(30);
+        if(errcount > 100) break;
+    }
+    Clear_Buffer();
+    
+    // 2. 发布数据
+    JsonLen = MakeOnenetPayload(Send_Json, temp, humi);
+    
+    // 设置发布命令（格式：$sys/{产品ID}/{设备名}/thing/property/post）
+    memset(ATSTR, 0, BUFLEN);
+    sprintf(ATSTR, "AT+QMTPUBEX=0,0,0,0,\"$sys/%s/%s/thing/property/post\",%d\r\n", 
+            PRODUCEKEY, DEVICENAME, JsonLen);
+    Uart2_SendStr(ATSTR);
+    delay_ms(300);
+    
+    // 等待发布准备响应
+    strx = strstr((const char*)buf_uart2.buf, ">");
+    errcount = 0;
+    while(strx == NULL) {
+        errcount++;
+        strx = strstr((const char*)buf_uart2.buf, ">");
+        delay_ms(30);
+        if(errcount > 100) break;
+    }
+    
+    // 发送实际的JSON数据
+    USART2_Send((char *)Send_Json, JsonLen);
+    UART2_send_byte(0x1A);  // 发送结束符
+    delay_ms(300);
+    
+    // 等待发布完成响应
+    strx = strstr((const char*)buf_uart2.buf, "+QMTPUBEX: 0,0,0");
+    errcount = 0;
+    while(strx == NULL) {
+        errcount++;
+        strx = strstr((const char*)buf_uart2.buf, "+QMTPUBEX: 0,0,0");
+        delay_ms(30);
+        if(errcount > 100) break;
+    }
+    
+    Clear_Buffer();
+    Gui_DrawFont_GBK16(16,10,RED,WHITE, "SEND DATA OK");
+}

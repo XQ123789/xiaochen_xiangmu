@@ -1,0 +1,5 @@
+# GPS实时定位项目 - Python依赖
+# 安装方法: pip install -r requirements.txt
+
+# 串口通信（树莓派/PC与STM32通信）
+pyserial>=3.5

@@ -1,0 +1,13 @@
+在跨子网隧道转发连接的基础上，通过公网服务器中转，将树莓派的 SSH 端口（22）映射到公网地址，本地通过公网地址 + 端口连接，再结合 SSH 隧道转发 VNC 端口。（需开启ssh服务）
+这里使用了natapp内网穿透工具，实现公网中转
+具体步骤
+1.有限申请natapp账户，购买免费（TCP）通道，得到生成的authtoken（隧道令牌）
+2.在树莓派上下载natapp客户端，首先赋权 chmod +a +x natapp
+3.在树莓派上执行 ./natapp -authtoken=your_authtoken
+4.在Windows终端执行 
+		    ssh -L 5900:localhost:5900 raspi@yebf6486.natappfree.cc -p 15313
+5.在VNC viewer上输入localhost:5900。首次链接需要输入树莓派账号和密码
+
+
+
+	

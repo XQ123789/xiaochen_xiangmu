@@ -1,0 +1,10 @@
+source ~/map_env/bin/activate
+
+# 安装 folium
+pip install folium
+
+# 运行你的程序
+python Map.py
+
+# 退出环境
+deactivate

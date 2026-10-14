@@ -1,0 +1,2 @@
+GPIO12、GPIO18舵机pwm输出口
+GPIO26继电器信号输出 

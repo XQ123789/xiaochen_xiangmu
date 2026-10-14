@@ -1,0 +1,28 @@
+from collections import deque
+
+def turbo_receive():
+    ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=0)
+    buffer = bytearray()  # 改用二进制缓冲
+    print("串口已打开，等待数据...")
+
+    while True:
+        # 大块读取二进制数据
+        raw = ser.read(ser.in_waiting or 1)
+        if raw:
+            buffer += raw
+
+            # 处理所有完整帧（按\r\n分割）
+            while b'\r\n' in buffer:
+                line, _, buffer = buffer.partition(b'\r\n')
+                try:
+                    decoded = line.decode('ascii', errors='ignore').strip()
+                    if decoded.startswith('GPS') and '*' in decoded:
+                        # 提取坐标部分（忽略校验和）
+                        coords = decoded.split('*')[0]
+                        print(f"经度: {coords.split(',')[2]}, 纬度: {coords.split(',')[1]}")
+                except UnicodeError:
+                    continue  # 忽略解码错误
+
+if __name__ == "__main__":
+    turbo_receive()
+

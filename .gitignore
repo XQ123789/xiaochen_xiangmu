@@ -1,0 +1,41 @@
+# ===== Keil MDK 构建产物 =====
+OUTPUT/
+Listings/
+Objects/
+DebugConfig/
+RTE/
+*.uvguix.*
+*.scvd
+
+# ===== 编译中间文件 =====
+*.o
+*.d
+*.crf
+*.axf
+*.lnp
+*.lst
+*.dep
+*.build_log.htm
+*.iex
+
+# ===== 二进制 / 可执行文件 =====
+*.exe
+*.dll
+
+# ===== Python 运行产物 =====
+__pycache__/
+*.pyc
+*.log
+
+# ===== 本地工具缓存 =====
+.mimosa/
+
+# ===== 敏感凭据（约定俗成：密钥只放这些文件，不进仓库） =====
+secrets.h
+config_local.json
+
+# ===== Keil 地图/列表文件 =====
+*.map
+*.lst
+*.dep
+*.iex
